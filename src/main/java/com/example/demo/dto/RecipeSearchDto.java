@@ -1,21 +1,18 @@
 package com.example.demo.dto;
 
-import jakarta.validation.constraints.Min;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+
+import java.util.List;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class RecipeSearchDto {
-    private boolean vegetarian;
-
-    @Min(1)
+    private Boolean vegetarian;
     private Integer servings;
-
-    private String includeIngredient;
-
-    private String excludeIngredient;
-
+    private List<String> includeIngredient;
+    private List<String> excludeIngredient;
     private String searchText;
-
 }
