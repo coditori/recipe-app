@@ -4,11 +4,13 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Table(name = "ingredients")
 @Getter
 @Setter
+@ToString
 @NoArgsConstructor
 public class Ingredient {
 
@@ -16,7 +18,9 @@ public class Ingredient {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "recipe_id")
     private String name;
+
+    public Ingredient(String name) {
+        this.name = name;
+    }
 }

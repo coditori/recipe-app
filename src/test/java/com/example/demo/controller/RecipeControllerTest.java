@@ -1,22 +1,26 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.IngredientDto;
 import com.example.demo.dto.RecipeDto;
 import com.example.demo.dto.RecipeSearchDto;
-import com.example.demo.model.Recipe;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.*;
+import org.springframework.test.annotation.DirtiesContext;
 
-import java.util.Objects;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
-import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class RecipeControllerTest {
 
     @Autowired
@@ -24,122 +28,286 @@ public class RecipeControllerTest {
 
     @Test
     public void testCreateRecipe_Success() {
+        RecipeDto recipeDto = getSampleRecipe();
+
+        var response = saveRecipe(recipeDto);
+        var savedRecipeDto = response.getBody();
+
+        assertNotNull(savedRecipeDto);
+        assertEquals("Lasagna", savedRecipeDto.getName());
+        assertFalse(savedRecipeDto.isVegetarian());
+        assertEquals(6, savedRecipeDto.getServings());
+        assertEquals("1. Cook the ground beef...", savedRecipeDto.getInstructions());
+
+        assertEquals(2, savedRecipeDto.getIngredients().size());
+    }
+
+    private static RecipeDto getSampleRecipe() {
         RecipeDto recipeDto = new RecipeDto();
         recipeDto.setName("Lasagna");
-        recipeDto.setIsVegetarian(false);
+        recipeDto.setVegetarian(false);
         recipeDto.setServings(6);
         recipeDto.setInstructions("1. Cook the ground beef...");
 
-        ResponseEntity<RecipeDto> response = restTemplate.postForEntity("/recipes", recipeDto, RecipeDto.class);
+        IngredientDto ingredientDto1 = new IngredientDto();
+        ingredientDto1.setName("Beef");
 
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertNotNull(Objects.requireNonNull(response.getBody()));
-        assertEquals("Lasagna", response.getBody().getName());
-        assertEquals(false, response.getBody().getIsVegetarian());
-        assertEquals(6, response.getBody().getServings());
-        assertEquals("1. Cook the ground beef...", response.getBody().getInstructions());
+        IngredientDto ingredientDto2 = new IngredientDto();
+        ingredientDto2.setName("Pasta");
+
+        Set<IngredientDto> ingredients = new HashSet<>();
+        ingredients.add(ingredientDto1);
+        ingredients.add(ingredientDto2);
+
+        recipeDto.setIngredients(ingredients);
+        return recipeDto;
     }
 
     @Test
     public void testCreateRecipe_MissingName() {
-        RecipeDto recipeDto = new RecipeDto();
-        recipeDto.setIsVegetarian(false);
-        recipeDto.setServings(6);
-        recipeDto.setInstructions("1. Cook the ground beef...");
+        RecipeDto recipeDto = getSampleRecipe();
+        recipeDto.setName(null);
+        System.out.println("recipeDto = " + recipeDto);
 
-        ResponseEntity<Recipe> response = restTemplate.postForEntity("/recipes", recipeDto, Recipe.class);
-
+        ResponseEntity<RecipeDto> response = saveRecipe(recipeDto);
+        System.out.println("response zzz = " + response.getBody());
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
+
+    private ResponseEntity<RecipeDto> saveRecipe(RecipeDto recipeDto) {
+        ResponseEntity<RecipeDto> recipeDtoResponseEntity = restTemplate.postForEntity("/recipes", recipeDto, RecipeDto.class);
+        System.out.println("recipeDtoResponseEntity = " + recipeDtoResponseEntity);
+        return recipeDtoResponseEntity;
+    }
+
+    private static HttpEntity<RecipeSearchDto> makeRequestEntity(RecipeSearchDto searchDto) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Create the HTTP entity with the request body and headers
+        return new HttpEntity<>(searchDto, headers);
+    }
+
     @Test
     public void testSearchRecipesAllVegetarian() {
+        RecipeDto vegetarianRecipe = getSampleRecipe();
+        vegetarianRecipe.setName("Vegetarian Recipe");
+        vegetarianRecipe.setVegetarian(true);
+        saveRecipe(vegetarianRecipe);
+
         RecipeSearchDto searchDto = new RecipeSearchDto();
         searchDto.setVegetarian(true);
 
-        ResponseEntity<?> response = restTemplate.postForEntity("/recipes/search", searchDto, Recipe.class);
+        ResponseEntity<List<RecipeDto>> response = restTemplate.exchange(
+                "/recipes/search",
+                HttpMethod.POST,
+                makeRequestEntity(searchDto),
+                new ParameterizedTypeReference<>() {
+                }
+        );
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        // Add assertions to check the response body for the expected vegetarian recipes
+        List<RecipeDto> recipes = response.getBody();
+        Assertions.assertNotNull(recipes, "Recipes should not be null");
+        System.out.println("recipes = " + recipes);
+        Assertions.assertEquals(1, recipes.size(), "Expected 1 recipe to be returned");
     }
 
     @Test
-    public void testSearchRecipesByServings() {
+    public void testSearchRecipesByServings() throws InterruptedException {
+        RecipeDto recipe1 = getSampleRecipe();
+        recipe1.setName("Recipe 1");
+        recipe1.setServings(4);
+        saveRecipe(recipe1);
+
+        RecipeDto recipe2 = getSampleRecipe();
+        recipe2.setName("Recipe 2");
+        recipe2.setServings(6);
+        saveRecipe(recipe2);
+
         RecipeSearchDto searchDto = new RecipeSearchDto();
         searchDto.setServings(4);
 
-        ResponseEntity<?> response = restTemplate.postForEntity("/recipes/search", searchDto, Recipe.class);
+        ResponseEntity<List<RecipeDto>> response = restTemplate.exchange(
+                "/recipes/search",
+                HttpMethod.POST,
+                makeRequestEntity(searchDto),
+                new ParameterizedTypeReference<>() {
+                }
+        );
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        // Add assertions to check the response body for the expected recipes with 4 servings
+        List<RecipeDto> recipes = response.getBody();
+        System.out.println("recipes = " + recipes);
+        Assertions.assertNotNull(recipes, "Recipes should not be null");
+        assertEquals(1, recipes.size(), "Expected 1 recipe to be returned");
+        assertEquals("Recipe 1", recipes.get(0).getName());
     }
 
     @Test
     public void testSearchRecipesByIncludeIngredient() {
-        RecipeSearchDto searchDto = new RecipeSearchDto();
-        searchDto.setIncludeIngredient(Set.of("potatoes"));
+        RecipeDto recipe1 = getSampleRecipe();
+        recipe1.setName("Recipe 1");
+        recipe1.setIngredients(Set.of(new IngredientDto("Ingredient 1"), new IngredientDto("Ingredient 2")));
+        saveRecipe(recipe1);
 
-        ResponseEntity<?> response = restTemplate.postForEntity("/recipes/search", searchDto, Recipe.class);
+        RecipeDto recipe2 = getSampleRecipe();
+        recipe2.setName("Recipe 2");
+        recipe2.setIngredients(Set.of(new IngredientDto("Ingredient 2"), new IngredientDto("Ingredient 3")));
+        saveRecipe(recipe2);
+
+        RecipeSearchDto searchDto = new RecipeSearchDto();
+        searchDto.setIncludeIngredient(Set.of("Ingredient 2"));
+
+        ResponseEntity<List<RecipeDto>> response = restTemplate.exchange(
+                "/recipes/search",
+                HttpMethod.POST,
+                makeRequestEntity(searchDto),
+                new ParameterizedTypeReference<>() {
+                }
+        );
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        // Add assertions to check the response body for the expected recipes with "potatoes" as an ingredient
+        List<RecipeDto> recipes = response.getBody();
+        Assertions.assertNotNull(recipes, "Recipes should not be null");
+        assertEquals(2, recipes.size(), "Expected 2 recipes to be returned");
+        assertEquals("Recipe 1", recipes.get(0).getName());
+        assertEquals("Recipe 2", recipes.get(1).getName());
     }
 
     @Test
     public void testSearchRecipesByExcludeIngredient() {
+        RecipeDto recipe1 = getSampleRecipe();
+        recipe1.setName("Recipe 1");
+        recipe1.setIngredients(Set.of(new IngredientDto("Ingredient 1"), new IngredientDto("Ingredient 2")));
+        saveRecipe(recipe1);
+
+        RecipeDto recipe2 = getSampleRecipe();
+        recipe2.setName("Recipe 2");
+        recipe2.setIngredients(Set.of(new IngredientDto("Ingredient 2"), new IngredientDto("Ingredient 3")));
+        saveRecipe(recipe2);
+
         RecipeSearchDto searchDto = new RecipeSearchDto();
-        searchDto.setExcludeIngredient(Set.of("salmon"));
+        searchDto.setExcludeIngredient(Set.of("Ingredient 2"));
 
-        ResponseEntity<?> response = restTemplate.postForEntity("/recipes/search", searchDto, Recipe.class);
+        ResponseEntity<?> response = restTemplate.exchange(
+                "/recipes/search",
+                HttpMethod.POST,
+                makeRequestEntity(searchDto),
+                new ParameterizedTypeReference<>() {
+                }
+        );
 
+        var recipes = response.getBody();
+        System.out.println("recipes = " + recipes);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        // Add assertions to check the response body for the expected recipes without "salmon" as an ingredient
+        Assertions.assertNotNull(recipes, "Recipes should not be null");
+//        assertEquals(1, recipes.size(), "Expected 1 recipe to be returned");
+//        assertEquals("Recipe 2", recipes.get(0).getName());
     }
 
     @Test
     public void testSearchRecipesBySearchText() {
-        RecipeSearchDto searchDto = new RecipeSearchDto();
-        searchDto.setSearchText("oven");
+        RecipeDto recipe1 = getSampleRecipe();
+        recipe1.setName("Recipe 1");
+        recipe1.setInstructions("Cooking instructions for Recipe 1...");
+        saveRecipe(recipe1);
 
-        ResponseEntity<?> response = restTemplate.postForEntity("/recipes/search", searchDto, Recipe.class);
+        RecipeDto recipe2 = getSampleRecipe();
+        recipe2.setName("Recipe 2");
+        recipe2.setInstructions("Cooking instructions for Recipe 2...");
+
+        saveRecipe(recipe2);
+
+        RecipeSearchDto searchDto = new RecipeSearchDto();
+        searchDto.setSearchText("Recipe 1");
+
+        ResponseEntity<List<RecipeDto>> response = restTemplate.exchange(
+                "/recipes/search",
+                HttpMethod.POST,
+                makeRequestEntity(searchDto),
+                new ParameterizedTypeReference<>() {
+                }
+        );
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        // Add assertions to check the response body for the expected recipes with "oven" in the instructions
+        List<RecipeDto> recipes = response.getBody();
+        Assertions.assertNotNull(recipes, "Recipes should not be null");
+        assertEquals(1, recipes.size(), "Expected 1 recipe to be returned");
+        assertEquals("Recipe 1", recipes.get(0).getName());
     }
 
     @Test
     public void testSearchRecipesMultipleFilters() {
+        var recipe1 = getSampleRecipe();
+        recipe1.setName("Recipe 1");
+        recipe1.setVegetarian(true);
+        recipe1.setServings(4);
+        recipe1.setIngredients(Set.of(new IngredientDto("Ingredient 1"), new IngredientDto("Ingredient 2")));
+        saveRecipe(recipe1);
+
+        var recipe2 = getSampleRecipe();
+        recipe2.setName("Recipe 2");
+        recipe2.setVegetarian(true);
+        recipe2.setServings(6);
+        recipe2.setIngredients(Set.of(new IngredientDto("Ingredient 2"), new IngredientDto("Ingredient 3")));
+        saveRecipe(recipe2);
+
         RecipeSearchDto searchDto = new RecipeSearchDto();
         searchDto.setVegetarian(true);
         searchDto.setServings(4);
-        searchDto.setIncludeIngredient(Set.of("potatoes"));
+        searchDto.setIncludeIngredient(Set.of("Ingredient 2"));
 
-        ResponseEntity<?> response = restTemplate.postForEntity("/recipes/search", searchDto, Recipe.class);
+        ResponseEntity<List<RecipeDto>> response = restTemplate.exchange(
+                "/recipes/search",
+                HttpMethod.POST,
+                makeRequestEntity(searchDto),
+                new ParameterizedTypeReference<>() {
+                }
+        );
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        // Add assertions to check the response body for the expected recipes with multiple filters applied
+        List<RecipeDto> recipes = response.getBody();
+        Assertions.assertNotNull(recipes, "Recipes should not be null");
+        assertEquals(1, recipes.size(), "Expected 1 recipe to be returned");
+        assertEquals("Recipe 1", recipes.get(0).getName());
     }
 
     @Test
     public void testSearchRecipesNoResults() {
         RecipeSearchDto searchDto = new RecipeSearchDto();
         searchDto.setVegetarian(true);
-        searchDto.setIncludeIngredient(Set.of("salmon"));
 
-        ResponseEntity<?> response = restTemplate.postForEntity("/recipes/search", searchDto, Recipe.class);
+        ResponseEntity<?> response = restTemplate.exchange(
+                "/recipes/search",
+                HttpMethod.POST,
+                makeRequestEntity(searchDto),
+                new ParameterizedTypeReference<>() {}
+        );
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        // Add assertions to check the response body for an empty list of recipes
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        var recipes = response.getBody();
+        Assertions.assertNull(recipes, "Recipes should be null");
     }
+
 
     @Test
     public void testSearchRecipesInvalidInput() {
         RecipeSearchDto searchDto = new RecipeSearchDto();
         searchDto.setServings(-1);
 
-        ResponseEntity<?> response = restTemplate.postForEntity("/recipes/search", searchDto, Recipe.class);
+        ResponseEntity<?> response = restTemplate.exchange(
+                "/recipes/search",
+                HttpMethod.POST,
+                makeRequestEntity(searchDto),
+                new ParameterizedTypeReference<>() {}
+        );
 
+        var recipes = response.getBody();
+        System.out.println("recipes = " + recipes);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        // Add assertions to check the response body for the expected validation error
+        assertNull(recipes, "Recipes should be null");
     }
 
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 import java.util.Set;
 
@@ -11,6 +12,7 @@ import java.util.Set;
 @Table(name = "recipes")
 @Getter
 @Setter
+@ToString
 @NoArgsConstructor
 public class Recipe {
 
@@ -25,7 +27,7 @@ public class Recipe {
 
     private int servings;
 
-    @OneToMany
+    @OneToMany(fetch = FetchType.EAGER)
     private Set<Ingredient> ingredients;
 
     @Lob

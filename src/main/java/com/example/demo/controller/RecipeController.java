@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.RecipeDto;
 import com.example.demo.dto.RecipeSearchDto;
+import com.example.demo.exception.InvalidRequestException;
 import com.example.demo.service.RecipeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -43,8 +44,11 @@ public class RecipeController {
             @ApiResponse(responseCode = "400", description = "Invalid search request")
     })
     @PostMapping("/search")
-    public ResponseEntity<List<RecipeDto>> searchRecipes(@Valid @RequestBody RecipeSearchDto searchDto) {
+    public List<RecipeDto> searchRecipes(@RequestBody RecipeSearchDto searchDto) {
+        if (searchDto == null) {
+            throw new InvalidRequestException("Invalid search request");
+        }
 
-        return ResponseEntity.ok(recipeService.searchRecipes(searchDto));
+        return recipeService.searchRecipes(searchDto);
     }
 }
