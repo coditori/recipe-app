@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.DemoApplication;
 import com.example.demo.dto.IngredientDto;
 import com.example.demo.dto.RecipeDto;
 import com.example.demo.dto.RecipeSearchDto;
@@ -19,7 +20,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = DemoApplication.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class RecipeControllerTest {
 

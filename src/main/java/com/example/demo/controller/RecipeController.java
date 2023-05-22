@@ -4,9 +4,6 @@ import com.example.demo.dto.RecipeDto;
 import com.example.demo.dto.RecipeSearchDto;
 import com.example.demo.exception.InvalidRequestException;
 import com.example.demo.service.RecipeService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,22 +24,22 @@ public class RecipeController {
         this.recipeService = recipeService;
     }
 
-    @Operation(summary = "Create a new recipe")
-    @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Recipe created successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid request body")
-    })
+//    @Operation(summary = "Create a new recipe")
+//    @ApiResponses({
+//            @ApiResponse(responseCode = "201", description = "Recipe created successfully"),
+//            @ApiResponse(responseCode = "400", description = "Invalid request body")
+//    })
     @PostMapping
     public ResponseEntity<RecipeDto> createRecipe(@Valid @RequestBody RecipeDto recipeDto) {
 
         return ResponseEntity.status(HttpStatus.CREATED).body(recipeService.saveRecipe(recipeDto));
     }
 
-    @Operation(summary = "Search recipes")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Recipes found"),
-            @ApiResponse(responseCode = "400", description = "Invalid search request")
-    })
+//    @Operation(summary = "Search recipes")
+//    @ApiResponses({
+//            @ApiResponse(responseCode = "200", description = "Recipes found"),
+//            @ApiResponse(responseCode = "400", description = "Invalid search request")
+//    })
     @PostMapping("/search")
     public List<RecipeDto> searchRecipes(@RequestBody RecipeSearchDto searchDto) {
         if (searchDto == null) {

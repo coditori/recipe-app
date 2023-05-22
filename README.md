@@ -53,4 +53,4 @@ The application can be deployed to a server or cloud platform using the followin
 3. Start the application using the command: java -jar demo-0.0.1-SNAPSHOT.jar
 
 ## Known Issues
-- None at the moment.
+- When I added Spring Doc to Spring Boot 3, tests will not run. I excluded some Spring Doc classes but it seems that is not working. At the end I disabled swagger then tests are working now!
