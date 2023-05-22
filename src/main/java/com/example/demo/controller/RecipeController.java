@@ -2,7 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.RecipeDto;
 import com.example.demo.dto.RecipeSearchDto;
-import com.example.demo.model.Recipe;
+import com.example.demo.service.RecipeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -14,9 +14,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/recipes")
 public class RecipeController {
+
+    private final RecipeService recipeService;
+
+    public RecipeController(RecipeService recipeService) {
+        this.recipeService = recipeService;
+    }
 
     @Operation(summary = "Create a new recipe")
     @ApiResponses({
@@ -26,7 +34,7 @@ public class RecipeController {
     @PostMapping
     public ResponseEntity<RecipeDto> createRecipe(@Valid @RequestBody RecipeDto recipeDto) {
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(recipeDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(recipeService.saveRecipe(recipeDto));
     }
 
     @Operation(summary = "Search recipes")
@@ -35,8 +43,8 @@ public class RecipeController {
             @ApiResponse(responseCode = "400", description = "Invalid search request")
     })
     @PostMapping("/search")
-    public ResponseEntity<Recipe> searchRecipes(@Valid @RequestBody RecipeSearchDto searchDto) {
+    public ResponseEntity<List<RecipeDto>> searchRecipes(@Valid @RequestBody RecipeSearchDto searchDto) {
 
-        return ResponseEntity.ok(new Recipe());
+        return ResponseEntity.ok(recipeService.searchRecipes(searchDto));
     }
 }
