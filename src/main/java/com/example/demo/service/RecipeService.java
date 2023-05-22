@@ -3,20 +3,25 @@ package com.example.demo.service;
 import com.example.demo.dto.RecipeDto;
 import com.example.demo.dto.RecipeSearchDto;
 import com.example.demo.exception.InvalidRequestException;
+import com.example.demo.model.Ingredient;
 import com.example.demo.model.Recipe;
 import com.example.demo.repository.RecipeRepository;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class RecipeService {
 
     private final RecipeRepository recipeRepository;
+    private final ModelMapper modelMapper;
 
-    public RecipeService(RecipeRepository recipeRepository) {
+    public RecipeService(RecipeRepository recipeRepository, ModelMapper modelMapper) {
         this.recipeRepository = recipeRepository;
+        this.modelMapper = modelMapper;
     }
 
     public List<RecipeDto> searchRecipes(RecipeSearchDto searchDto) {
@@ -26,23 +31,16 @@ public class RecipeService {
                 .filter(recipe -> isVegetarianMatch(recipe, searchDto.getVegetarian()))
                 .filter(recipe -> isServingsMatch(recipe, searchDto.getServings()))
                 .filter(recipe -> isIncludeIngredientMatch(recipe, searchDto.getIncludeIngredient()))
-                .filter(recipe -> isExcludeIngredientMatch(recipe, searchDto.getExcludeIngredient()))
+                .filter(recipe -> !isIncludeIngredientMatch(recipe, searchDto.getExcludeIngredient()))
                 .filter(recipe -> isInstructionsMatch(recipe, searchDto.getSearchText()))
                 .map(recipe -> modelMapper.map(recipe, RecipeDto.class))
                 .collect(Collectors.toList());
     }
 
-    public Recipe saveRecipe(RecipeDto recipeDto) {
-        validateRecipeDto(recipeDto);
-
-        Recipe recipe = new Recipe();
-        recipe.setName(recipeDto.getName());
-        recipe.setVegetarian(recipeDto.getIsVegetarian());
-        recipe.setServings(recipeDto.getServings());
-        recipe.setIngredients(recipeDto.getIngredients());
-        recipe.setInstructions(recipeDto.getInstructions());
-
-        return recipeRepository.save(recipe);
+    public RecipeDto saveRecipe(RecipeDto recipeDto) {
+        Recipe recipe = modelMapper.map(recipeDto, Recipe.class);
+        Recipe savedRecipe = recipeRepository.save(recipe);
+        return modelMapper.map(savedRecipe, RecipeDto.class);
     }
 
     private void validateRecipeDto(RecipeDto recipeDto) {
@@ -53,8 +51,6 @@ public class RecipeService {
         if (recipeDto.getServings() <= 0) {
             throw new InvalidRequestException("Servings must be a positive value.");
         }
-
-        // Additional validation logic for ingredients, if needed
     }
 
     private boolean isVegetarianMatch(Recipe recipe, boolean isVegetarian) {
@@ -65,12 +61,12 @@ public class RecipeService {
         return servings == null || recipe.getServings() == servings;
     }
 
-    private boolean isIncludeIngredientMatch(Recipe recipe, String includeIngredient) {
-        return includeIngredient == null || recipe.getIngredients().contains(includeIngredient);
-    }
+    private boolean isIncludeIngredientMatch(Recipe recipe, Set<String> includeIngredient) {
+        Set<String> recipeIngredients = recipe.getIngredients().stream()
+                .map(Ingredient::getName)
+                .collect(Collectors.toSet());
 
-    private boolean isExcludeIngredientMatch(Recipe recipe, String excludeIngredient) {
-        return excludeIngredient == null || !recipe.getIngredients().contains(excludeIngredient);
+        return recipeIngredients.containsAll(includeIngredient);
     }
 
     private boolean isInstructionsMatch(Recipe recipe, String searchText) {

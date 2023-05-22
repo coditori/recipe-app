@@ -2,7 +2,7 @@ package com.example.demo.dto;
 
 import lombok.*;
 
-import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -12,7 +12,7 @@ import java.util.List;
 public class RecipeSearchDto {
     private Boolean vegetarian;
     private Integer servings;
-    private List<String> includeIngredient;
-    private List<String> excludeIngredient;
+    private Set<String> includeIngredient;
+    private Set<String> excludeIngredient;
     private String searchText;
 }
